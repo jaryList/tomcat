@@ -33,6 +33,14 @@ mvn clean package
 ````   
 2、等待 maven 打包编译完成后，点击 `Bootstrap` 类运行它的 main 方法
 
-## 4. 参考链接
+## 4. 问题
+1. 控制台打印的部分日志信息乱码。
+> 解决方式：
+> - 启动的时候设置启动参数：-Duser.language=en
+> 具体详细信息：https://blog.csdn.net/qq_38975553/article/details/102937820
+
+## 5. 参考链接
 https://cloud.tencent.com/developer/article/1666970
+
+
 

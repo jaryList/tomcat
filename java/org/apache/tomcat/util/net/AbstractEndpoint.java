@@ -1056,6 +1056,11 @@ public abstract class AbstractEndpoint<S> {
      * processing as if the Poller (for those endpoints that have one)
      * selected the socket.
      *
+     * 调用链路：
+     *      NioEndpoint#processSocket -> SocketProcessor#process -> ConnectionHandler#process -> Http11Processor#service
+     *  Http11Processor#service 中会根据不同的场景（keepAlive、异步 Servlet 请求、协议升级等）返回对应的 SocketState，ConnectionHandler#process 会
+     *  根据不同的 SocketState 做相应的处理（比如：关闭 Socket 连接，把这个 Socket 连接[NioChannel] 重新注册到 Poller 中[keepAlive]）。
+     *
      * @param socketWrapper The socket wrapper to process
      * @param event         The socket event to be processed
      * @param dispatch      Should the processing be performed on a new
