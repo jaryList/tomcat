@@ -5684,6 +5684,7 @@ public class StandardContext extends ContainerBase
             }
 
             // Start ContainerBackgroundProcessor thread
+            // 启动后台线程
             super.threadStart();
         } finally {
             // Unbinding thread
@@ -5984,6 +5985,7 @@ public class StandardContext extends ContainerBase
     public void backgroundProcess() {
 
         InstanceManager instanceManager = getInstanceManager();
+        // ？？？
         if (instanceManager instanceof DefaultInstanceManager) {
             try {
                 ((DefaultInstanceManager)instanceManager).backgroundProcess();

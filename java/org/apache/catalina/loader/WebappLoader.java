@@ -439,6 +439,7 @@ public class WebappLoader extends LifecycleMBeanBase
      */
     @Override
     public void backgroundProcess() {
+        // 热加载的实现
         if (reloadable && modified()) {
             try {
                 Thread.currentThread().setContextClassLoader
