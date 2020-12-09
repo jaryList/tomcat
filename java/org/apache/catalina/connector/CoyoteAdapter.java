@@ -146,6 +146,7 @@ public class CoyoteAdapter implements Adapter {
                 // Error or timeout
                 // Lift any suspension (e.g. if sendError() was used by an async
                 // request) to allow the response to be written to the client
+                // 解除任何挂起，允许 response 写到客户端
                 response.setSuspended(false);
             }
 
@@ -231,6 +232,8 @@ public class CoyoteAdapter implements Adapter {
                         request, response);
             }
 
+            // 这里判断异步正在进行，说明这不是一个异步完成方法的回调，是一个正常异步请求，继续调用容器。
+            // 容器的 StandardWrapperValve 会对异步转发的请求做特殊处理。
             if (request.isAsyncDispatching()) {
                 connector.getService().getContainer().getPipeline().getFirst().invoke(
                         request, response);
@@ -240,6 +243,7 @@ public class CoyoteAdapter implements Adapter {
                 }
             }
 
+            // 注意，如果超时或者出错，request.isAsync() 会返回 false，这里是为了尽快的输出错误给客户端。
             if (!request.isAsync()) {
                 request.finishRequest();
                 response.finishResponse();
@@ -286,6 +290,7 @@ public class CoyoteAdapter implements Adapter {
 
             req.getRequestProcessor().setWorkerThreadName(null);
             // Recycle the wrapper request and response
+            // 回收 request 和 response
             if (!success || !request.isAsync()) {
                 updateWrapperErrorCount(request, response);
                 request.recycle();

@@ -192,8 +192,10 @@ public class NioBlockingSelector {
                 }else {
                     //latch countdown has happened
                     keycount = 1;
+                    // 重置 CountDownLatch 为 null
                     att.resetReadLatch();
                 }
+                // 判断有没有超时
                 if (readTimeout >= 0 && (keycount == 0))
                     timedout = (System.currentTimeMillis() - time) >= readTimeout;
             } //while
@@ -216,6 +218,7 @@ public class NioBlockingSelector {
         protected Selector selector = null;
         protected final SynchronizedQueue<Runnable> events = new SynchronizedQueue<>();
         public void disable() { run = false; selector.wakeup();}
+        // ???
         protected final AtomicInteger wakeupCounter = new AtomicInteger(0);
 
         public void cancelKey(final SelectionKey key) {
@@ -243,8 +246,10 @@ public class NioBlockingSelector {
             final SocketChannel ch = nch.getIOChannel();
             if ( ch == null ) return;
 
+            // 注册感兴趣的事件（ops）到 BlockPoller中的 Selector 上
             Runnable r = new RunnableAdd(ch, key, ops, ref);
             events.offer(r);
+            // todo ???
             wakeup();
         }
 
@@ -283,6 +288,9 @@ public class NioBlockingSelector {
             return (size > 0);
         }
 
+        // 1. 批量处理 events 队列的注册任务
+        // 2. selector 等待感兴趣的事件发生
+        // 通过 wakeupCounter 这个变量的控制，使得 CPU 的利用率得到了提升和 BlockPoller 线程的处理能力得到了提升。
         @Override
         public void run() {
             while (run) {
@@ -292,8 +300,11 @@ public class NioBlockingSelector {
                     try {
                         int i = wakeupCounter.get();
                         if (i>0)
+                            // 先尝试一次非阻塞轮询
                             keyCount = selector.selectNow();
                         else {
+                            // wakeupCounter 设为 -1 阻塞，每当有一个新任务加入到 events 队列时，
+                            // 会调用 wakeup 尝试唤醒正在次阻塞的 BlockPoller 线程
                             wakeupCounter.set(-1);
                             keyCount = selector.select(1000);
                         }
@@ -323,6 +334,7 @@ public class NioBlockingSelector {
                         NioSocketWrapper attachment = (NioSocketWrapper)sk.attachment();
                         try {
                             iterator.remove();
+                            // todo ???
                             sk.interestOps(sk.interestOps() & (~sk.readyOps()));
                             if ( sk.isReadable() ) {
                                 countDown(attachment.getReadLatch());
@@ -348,6 +360,7 @@ public class NioBlockingSelector {
             if (selector.isOpen()) {
                 try {
                     // Cancels all remaining keys
+                    // todo ???
                     selector.selectNow();
                 }catch( Exception ignore ) {
                     if (log.isDebugEnabled())log.debug("",ignore);

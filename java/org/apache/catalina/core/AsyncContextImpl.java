@@ -120,6 +120,7 @@ public class AsyncContextImpl implements AsyncContext, AsyncContextCallback {
 
     public boolean timeout() {
         AtomicBoolean result = new AtomicBoolean();
+        // 设置异步超时，把异步状态机的状态改为 AsyncState.TIMING_OUT
         request.getCoyoteRequest().action(ActionCode.ASYNC_TIMEOUT, result);
         // Avoids NPEs during shutdown. A call to recycle will null this field.
         Context context = this.context;

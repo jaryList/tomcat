@@ -656,6 +656,7 @@ public class Http11InputBuffer implements InputBuffer, ApplicationBufferHandler 
 
         if (swallowInput && (lastActiveFilter != -1)) {
             int extraBytes = (int) activeFilters[lastActiveFilter].end();
+            // todo 为什么需要移动 ByteBuffer的 pos ？
             byteBuffer.position(byteBuffer.position() - extraBytes);
         }
     }
@@ -785,15 +786,20 @@ public class Http11InputBuffer implements InputBuffer, ApplicationBufferHandler 
                 throw new IllegalArgumentException(sm.getString("iib.requestheadertoolarge.error"));
             }
         } else {
+            // 当 http 头解析完成后 parsingHeader 会被设置为 false，再次调用 fill 方法时，
+            // 会把 http 头部解析完成时 ByteBuffer 中的 pos 赋值到 ByteBuffer 的 pos、limit
             byteBuffer.limit(end).position(end);
         }
 
+        // 切换到写
         byteBuffer.mark();
         if (byteBuffer.position() < byteBuffer.limit()) {
             byteBuffer.position(byteBuffer.limit());
         }
+
         byteBuffer.limit(byteBuffer.capacity());
         int nRead = wrapper.read(block, byteBuffer);
+        // todo 还原回读???
         byteBuffer.limit(byteBuffer.position()).reset();
 
         if (log.isDebugEnabled()) {

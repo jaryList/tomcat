@@ -391,6 +391,7 @@ public abstract class AbstractProcessor extends AbstractProcessorLight implement
         case CLOSE: {
             action(ActionCode.COMMIT, null);
             try {
+                // 调用 OutputFilter，最后调用 HttpOutputBuffer（outputStreamOutputBuffer）
                 finishResponse();
             } catch (IOException e) {
                 handleIOException(e);
@@ -682,7 +683,7 @@ public abstract class AbstractProcessor extends AbstractProcessorLight implement
 
 
     private void doTimeoutAsync() {
-        // Avoid multiple timeouts
+        // Avoid multiple timeouts  TODO ??? 如何避免多次超时？ 修改为 -1 有什么含义？
         setAsyncTimeout(-1);
         asyncTimeoutGeneration = asyncStateMachine.getCurrentGeneration();
         processSocketEvent(SocketEvent.TIMEOUT, true);

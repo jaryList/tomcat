@@ -131,6 +131,7 @@ public class CoyoteOutputStream extends ServletOutputStream {
      *         non-blocking mode.
      */
     private boolean checkNonBlockingWrite() {
+        // 根据 CoyoteResponse 有没有 WriteListener 来判断是否是非阻塞写
         boolean nonBlocking = !ob.isBlocking();
         if (nonBlocking && !ob.isReady()) {
             throw new IllegalStateException(sm.getString("coyoteOutputStream.nbNotready"));

@@ -34,6 +34,7 @@ import org.apache.tomcat.util.net.SocketWrapperBase;
  */
 public abstract class AbstractProcessorLight implements Processor {
 
+    // 分发非阻塞读、非阻塞写。跟 Servlet 3.1 和 HTTP2 有关
     private Set<DispatchType> dispatches = new CopyOnWriteArraySet<>();
 
 
@@ -56,6 +57,7 @@ public abstract class AbstractProcessorLight implements Processor {
             } else if (status == SocketEvent.DISCONNECT) {
                 // Do nothing here, just wait for it to get recycled
             } else if (isAsync() || isUpgrade() || state == SocketState.ASYNC_END) {
+                // 异步 complete 执行完成后，这里返回 state =  SocketState.ASYNC_END
                 state = dispatch(status);
                 state = checkForPipelinedData(state, socketWrapper);
             } else if (status == SocketEvent.OPEN_WRITE) {
@@ -78,6 +80,7 @@ public abstract class AbstractProcessorLight implements Processor {
             }
 
             if (isAsync()) {
+                // 异步 complete 执行完成后，会把异步状态机的状态变为初始态 AsyncState.DISPATCHED。
                 state = asyncPostProcess();
                 if (getLog().isDebugEnabled()) {
                     getLog().debug("Socket: [" + socketWrapper +
@@ -90,6 +93,9 @@ public abstract class AbstractProcessorLight implements Processor {
                 // dispatches to process.
                 dispatches = getIteratorAndClearDispatches();
             }
+
+            // 异步 complete 执行完成后，返回的 state =  SocketState.ASYNC_END，所以会再次进入这个循环。
+
         } while (state == SocketState.ASYNC_END ||
                 dispatches != null && state != SocketState.CLOSED);
 

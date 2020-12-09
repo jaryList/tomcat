@@ -44,6 +44,9 @@ import org.w3c.dom.Document;
 import org.w3c.dom.ls.DOMImplementationLS;
 
 /**
+ * 对于一些常驻内存的类先用系统类加载器加载到 JVM 中，避免使用 WebappClassLoader 加载这些类后，
+ * 这些类一直保持对该 WebappClassLoader 的引用，从而导致该 WebappClassLoader 对象无法释放，导致内存泄漏。
+ *
  * Provide a workaround for known places where the Java Runtime environment can
  * cause a memory leak or lock files.
  * <p>

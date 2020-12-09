@@ -758,6 +758,7 @@ public abstract class AbstractProtocol<S> implements ProtocolHandler,
 
             if (processor != null) {
                 // Make sure an async timeout doesn't fire
+                // 从 waitingProcessors 集合中移除 Processor
                 getProtocol().removeWaitingProcessor(processor);
             } else if (status == SocketEvent.DISCONNECT || status == SocketEvent.ERROR) {
                 // Nothing to do. Endpoint requested a close and there is no
@@ -765,16 +766,19 @@ public abstract class AbstractProtocol<S> implements ProtocolHandler,
                 return SocketState.CLOSED;
             }
 
+            // 标记当前执行线程为容器线程
             ContainerThreadMarker.set();
 
             try {
                 if (processor == null) {
+                    // 协议升级
                     String negotiatedProtocol = wrapper.getNegotiatedProtocol();
                     // OpenSSL typically returns null whereas JSSE typically
                     // returns "" when no protocol is negotiated
                     if (negotiatedProtocol != null && negotiatedProtocol.length() > 0) {
                         UpgradeProtocol upgradeProtocol = getProtocol().getNegotiatedProtocol(negotiatedProtocol);
                         if (upgradeProtocol != null) {
+                            // TODO HTTP1.1 升级为 HTTP2 ？？？
                             processor = upgradeProtocol.getProcessor(wrapper, getProtocol().getAdapter());
                             if (getLog().isDebugEnabled()) {
                                 getLog().debug(sm.getString("abstractConnectionHandler.processorCreate", processor));
@@ -806,14 +810,18 @@ public abstract class AbstractProtocol<S> implements ProtocolHandler,
                         }
                     }
                 }
+
                 if (processor == null) {
+                    // 先从 Processor 对象缓存池（栈）中取
                     processor = recycledProcessors.pop();
                     if (getLog().isDebugEnabled()) {
                         getLog().debug(sm.getString("abstractConnectionHandler.processorPop", processor));
                     }
                 }
                 if (processor == null) {
+                    // 从 Processor 对象缓存池（栈）中取不到的话，就新创建一个 Processor
                     processor = getProtocol().createProcessor();
+                    // TODO 注册 JNDI ？？？
                     register(processor);
                     if (getLog().isDebugEnabled()) {
                         getLog().debug(sm.getString("abstractConnectionHandler.processorCreate", processor));
@@ -897,6 +905,10 @@ public abstract class AbstractProtocol<S> implements ProtocolHandler,
                         getProtocol().addWaitingProcessor(processor);
                     }
                 } else if (state == SocketState.OPEN) {
+                    // tomcat 中 keep-alive 的实现就是再次注册读事件。
+                    // tomcat9 把 wrapper 和  processor 关联了起来
+//                    wrapper.setCurrentProcessor(null);
+
                     // In keep-alive but between requests. OK to recycle
                     // processor. Continue to poll for the next request.
                     connections.remove(socket);

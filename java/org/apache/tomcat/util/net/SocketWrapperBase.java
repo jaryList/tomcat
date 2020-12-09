@@ -35,6 +35,10 @@ import org.apache.juli.logging.LogFactory;
 import org.apache.tomcat.util.ExceptionUtils;
 import org.apache.tomcat.util.res.StringManager;
 
+/**
+ * 屏蔽不同 IO 模型的 socket 差异，子类去实现特定的 IO 模型特性（比如：NIO 模型下，tomcat 实现了对请求体的阻塞读写，具体实现就在 NioSocketWrapper）
+ * @param <E>
+ */
 public abstract class SocketWrapperBase<E> {
 
     private static final Log log = LogFactory.getLog(SocketWrapperBase.class);

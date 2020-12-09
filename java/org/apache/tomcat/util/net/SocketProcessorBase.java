@@ -37,6 +37,7 @@ public abstract class SocketProcessorBase<S> implements Runnable {
 
     @Override
     public final void run() {
+        // todo 为什么对 socketWrapper 进行加锁。tomcat 是如何对并发操作 socket 做处理的？
         synchronized (socketWrapper) {
             // It is possible that processing may be triggered for read and
             // write at the same time. The sync above makes sure that processing

@@ -44,6 +44,9 @@ import java.util.logging.Logger;
 /**
  * Per classloader LogManager implementation.
  *
+ * 类加载器日志管理器（https://gitbook.cn/books/5cec900fde259f17b7916a47/index.html）
+ * 可以通过在 JVM 启动时设置 -Djava.util.logging.manager 这个系统变量来替换 JDK 默认的 LogManager。
+ *
  * For light debugging, set the system property
  * <code>org.apache.juli.ClassLoaderLogManager.debug=true</code>.
  * Short configuration information will be sent to <code>System.err</code>.
@@ -103,6 +106,8 @@ public class ClassLoaderLogManager extends LogManager {
      * Map containing the classloader information, keyed per classloader. A
      * weak hashmap is used to ensure no classloader reference is leaked from
      * application redeployment.
+     *
+     * todo 虚引用 map 可以防止应用重部署引起的 classloader 内存泄漏？？？
      */
     protected final Map<ClassLoader, ClassLoaderLogInfo> classLoaderLoggers =
             new WeakHashMap<>(); // Guarded by this
@@ -538,6 +543,7 @@ public class ClassLoaderLogManager extends LogManager {
         try {
             // Use a ThreadLocal to work around
             // https://bugs.openjdk.java.net/browse/JDK-8195096
+            // todo org.apache.juli.ClassLoaderLogManager.getProperty 时会判断 addingLocalRootLogger 的值
             addingLocalRootLogger.set(Boolean.TRUE);
             addLogger(localRootLogger);
         } finally {
@@ -765,6 +771,7 @@ public class ClassLoaderLogManager extends LogManager {
 
 
     protected static final class ClassLoaderLogInfo {
+        // todo Logger 对象组成了一颗树？在 loggers 中就可以查到了，为什么还要组织一颗树？
         final LogNode rootNode;
         final Map<String, Logger> loggers = new ConcurrentHashMap<>();
         final Map<String, Handler> handlers = new HashMap<>();

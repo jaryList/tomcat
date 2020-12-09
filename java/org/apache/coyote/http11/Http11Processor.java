@@ -495,6 +495,9 @@ public class Http11Processor extends AbstractProcessor {
         boolean keptAlive = false;
         SendfileState sendfileState = SendfileState.DONE;
 
+        // Error state for the request/response currently being processed
+        // 当前处理的连接请求没有发生错误、keepAlive 为 true、不是异步请求、协议没有关闭，这些条件同时满足时，继续循环。
+        // 实现了 keepAlive
         while (!getErrorState().isError() && keepAlive && !isAsync() && upgradeToken == null &&
                 sendfileState == SendfileState.DONE && !endpoint.isPaused()) {
 
@@ -537,6 +540,8 @@ public class Http11Processor extends AbstractProcessor {
                 if (log.isDebugEnabled()) {
                     log.debug(sm.getString("http11processor.header.parse"), e);
                 }
+
+                // 一般是由客户端发起的中断连接操作，所以必须要立马关闭该连接
                 setErrorState(ErrorState.CLOSE_CONNECTION_NOW, e);
                 break;
             } catch (Throwable t) {
@@ -619,6 +624,8 @@ public class Http11Processor extends AbstractProcessor {
                     // set the status to 500 and set the errorException.
                     // If we fail here, then the response is likely already
                     // committed, so we can't try and set headers.
+
+                    // 当 response 返回的状态码为指定码时，结束 keepAlive，关闭客户端。
                     if(keepAlive && !getErrorState().isError() && !isAsync() &&
                             statusDropsConnection(response.getStatus())) {
                         setErrorState(ErrorState.CLOSE_CLEAN, null);

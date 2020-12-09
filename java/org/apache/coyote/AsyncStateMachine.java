@@ -276,6 +276,7 @@ public class AsyncStateMachine {
             return SocketState.LONG;
         } else if (state == AsyncState.MUST_COMPLETE || state == AsyncState.COMPLETING) {
             asyncCtxt.fireOnComplete();
+            // 异步完成后会把异步状态机的状态改为最初的初始态。
             state = AsyncState.DISPATCHED;
             asyncCtxt.decrementInProgressAsyncCount();
             return SocketState.ASYNC_END;

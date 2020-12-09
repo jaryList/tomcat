@@ -114,7 +114,7 @@ class Http2Parser {
         case GOAWAY:
             readGoawayFrame(payloadSize);
             break;
-        case WINDOW_UPDATE:
+        case WINDOW_UPDATE: // 流量控制
             readWindowUpdateFrame(streamId);
             break;
         case CONTINUATION:

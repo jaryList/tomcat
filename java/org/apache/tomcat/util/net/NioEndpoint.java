@@ -601,7 +601,9 @@ public class NioEndpoint extends AbstractJsseEndpoint<NioChannel> {
         @Override
         public void run() {
             if (interestOps == OP_REGISTER) {
+                // 注册事件由 Acceptor 注册到 Poller
                 try {
+                    // 把 SocketWrapper 设置到 attachment
                     socket.getIOChannel().register(
                             socket.getPoller().getSelector(), SelectionKey.OP_READ, socketWrapper);
                 } catch (Exception x) {
@@ -619,6 +621,8 @@ public class NioEndpoint extends AbstractJsseEndpoint<NioChannel> {
                         socket.socketWrapper.getEndpoint().countDownConnection();
                         ((NioSocketWrapper) socket.socketWrapper).closed = true;
                     } else {
+                        // 注册新的事件到 Poller
+                        // 注册新的事件到 SelectionKey
                         final NioSocketWrapper socketWrapper = (NioSocketWrapper) key.attachment();
                         if (socketWrapper != null) {
                             //we are registering the key to start with, reset the fairness counter.
@@ -822,6 +826,11 @@ public class NioEndpoint extends AbstractJsseEndpoint<NioChannel> {
         @Override
         public void run() {
             // Loop until destroy() is called
+
+            // todo 1、2 如何切换？？keyCount、wakeupCounter？？？
+            // 1. 处理 event 优先级高 ！！！
+            // 2. 遍历 SelectionKey
+            // 3. Process timeouts
             while (true) {
 
                 boolean hasEvents = false;
@@ -889,6 +898,13 @@ public class NioEndpoint extends AbstractJsseEndpoint<NioChannel> {
                         if ( attachment.getSendfileData() != null ) {
                             processSendfile(sk,attachment, false);
                         } else {
+                            /**
+                             * 取消读事件，防止多个线程对同一个 Socket 进行处理。
+                             * 取消读事件，防止多个线程对同一个 Socket 同时进行处理。
+                             * 想象一种场景，如果一个 http 请求的包只来了一部分，也就是 SocketProcessor 在等待后面一部分，
+                             * 后面部分来的时候，触发读事件，重新创建一个 SocketProcessor，这样会导致两个 processor 同时
+                             * 处理一个 Socket 数据，会导致混乱。
+                             */
                             unreg(sk, attachment, sk.readyOps());
                             boolean closeSocket = false;
                             // Read goes before write
@@ -1116,7 +1132,9 @@ public class NioEndpoint extends AbstractJsseEndpoint<NioChannel> {
 
         private Poller poller = null;
         private int interestOps = 0;
+        // 请求体读锁
         private CountDownLatch readLatch = null;
+        // 响应体写锁
         private CountDownLatch writeLatch = null;
         private volatile SendfileData sendfileData = null;
         private volatile long lastRead = System.currentTimeMillis();
@@ -1576,6 +1594,9 @@ public class NioEndpoint extends AbstractJsseEndpoint<NioChannel> {
     /**
      * This class is the equivalent of the Worker, but will simply use in an
      * external Executor thread pool.
+     *
+     * 业务处理线程任务。负责 TSL 握手，以及调用 http 协议处理器（http 请求头的解析，把 http 请求传给容器处理）。
+     * 注意：SocketProcessor 是 NioEndpoint 的内部类，可以直接调用外部类 NioEndpoint 的方法和属性。
      */
     protected class SocketProcessor extends SocketProcessorBase<NioChannel> {
 
@@ -1585,10 +1606,21 @@ public class NioEndpoint extends AbstractJsseEndpoint<NioChannel> {
 
         @Override
         protected void doRun() {
+            // 为了适配不同的 Channel 和 Socket，tomcat 在 Channel、Socket 上封装了一层 SocketWrapper。
             NioChannel socket = socketWrapper.getSocket();
+            // NIO 事件就绪后返回的对象 SelectionKey
             SelectionKey key = socket.getIOChannel().keyFor(socket.getPoller().getSelector());
 
+            // 通过宿主类找到 Poller
+            // 非静态内部类通过宿主类找到 Poller
+//            Poller poller = NioEndpoint.this.poller;
+//            if (poller == null) {
+//                socketWrapper.close();
+//                return;
+//            }
+
             try {
+                // handshake = -1 表示握手失败，handshake = 0 表示握手成功
                 int handshake = -1;
 
                 try {
@@ -1620,6 +1652,7 @@ public class NioEndpoint extends AbstractJsseEndpoint<NioChannel> {
                 } catch (CancelledKeyException ckx) {
                     handshake = -1;
                 }
+
                 if (handshake == 0) {
                     SocketState state = SocketState.OPEN;
                     // Process the request from this socket
@@ -1628,6 +1661,8 @@ public class NioEndpoint extends AbstractJsseEndpoint<NioChannel> {
                     } else {
                         state = getHandler().process(socketWrapper, event);
                     }
+
+                    // 当 Socket 状态为 CLOSED 时，撤销已注册的 SelectionKey，释放 Socket 连接。
                     if (state == SocketState.CLOSED) {
                         close(socket, key);
                     }
@@ -1647,6 +1682,8 @@ public class NioEndpoint extends AbstractJsseEndpoint<NioChannel> {
                 log.error("", t);
                 socket.getPoller().cancelledKey(key);
             } finally {
+                // 可能长期存活的对象，在执行完逻辑后，一定要把内部的引起置为 null。否则会引起内存泄漏
+                // 这里只是把 SocketProcessor 里的 socketWrapper 设置为 null。socketWrapper 已注册的事件可能还存在。
                 socketWrapper = null;
                 event = null;
                 //return to cache
