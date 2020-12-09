@@ -131,6 +131,8 @@ public class AsyncContextImpl implements AsyncContext, AsyncContextCallback {
             }
             ClassLoader oldCL = context.bind(false, null);
             try {
+                // 不直接操作成员变量，而是把成员变量赋值到本地变量，操作本地变量。
+                // 操作本地变量，性能会更好一些。
                 List<AsyncListenerWrapper> listenersCopy = new ArrayList<>(listeners);
                 for (AsyncListenerWrapper listener : listenersCopy) {
                     try {

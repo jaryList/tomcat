@@ -683,7 +683,8 @@ public abstract class AbstractProcessor extends AbstractProcessorLight implement
 
 
     private void doTimeoutAsync() {
-        // Avoid multiple timeouts  TODO ??? 如何避免多次超时？ 修改为 -1 有什么含义？
+        // Avoid multiple timeouts
+        // 避免多次超时，asyncTimeout 修改为 -1 这样异步超时后就不会被多次调用。
         setAsyncTimeout(-1);
         asyncTimeoutGeneration = asyncStateMachine.getCurrentGeneration();
         processSocketEvent(SocketEvent.TIMEOUT, true);

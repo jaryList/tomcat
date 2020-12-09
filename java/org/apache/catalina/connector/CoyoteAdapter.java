@@ -151,6 +151,7 @@ public class CoyoteAdapter implements Adapter {
             }
 
             if (status==SocketEvent.TIMEOUT) {
+                // 异步 Servlet 超时时会触发，执行 asyncConImpl.timeout()，把异步状态机状态改为 AsyncState.TIMING_OUT
                 if (!asyncConImpl.timeout()) {
                     asyncConImpl.setErrorState(null, false);
                 }
